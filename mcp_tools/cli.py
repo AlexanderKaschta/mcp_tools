@@ -27,9 +27,19 @@ def osm_export() -> None:
 
     answers = inquirer.prompt(export_questions)
 
+    if len(answers['city']) < 1:
+        print("Fehler: Die Eingabe darf nicht leer sein!")
+        pass
+
     overpass_query = f"[out:json];area[name=\"{answers['city']}\"];(relation[\"type\"=\"boundary\"][\"admin_level\"~\"8|9|10\"](area););out;"
 
     request = requests.get(OVERPASS_API_URL, params={"data": overpass_query})
+
+    try:
+        request.raise_for_status()
+    except requests.exceptions.HTTPError:
+        print("Fehler: Fehlerhafter Status-Code der HTTP-Anfrage!")
+        pass
 
     response = request.json()
 
@@ -38,8 +48,11 @@ def osm_export() -> None:
 
     counter = 1
 
-    for item in response["elements"]:
+    if len(response["elements"]) == 0:
+        print("Fehler: Es konnten keine passenden Daten gefunden werden!")
+        pass
 
+    for item in response["elements"]:
         streets = set()
 
         print(f"Lade {item['tags']['name']}")
@@ -63,3 +76,5 @@ def osm_export() -> None:
     file = open("MCP-Orte-Adressen.json", "w", encoding="utf-8")
     file.write(file_content)
     file.close()
+
+    print("Dateiexport fertig!")
