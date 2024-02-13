@@ -21,8 +21,14 @@ def main() -> None:
 
 
 def osm_export() -> None:
+
+    export_street_options = ["Straßen", "Parks", "Plätze"]
+
     export_questions = [
         inquirer.Text("city", message="Welche Stadt soll exportiert werden?"),
+        inquirer.Checkbox("options",
+                          message="Was soll alles als Straße exportiert werden?",
+                          choices=export_street_options),
     ]
 
     answers = inquirer.prompt(export_questions)
@@ -31,7 +37,8 @@ def osm_export() -> None:
         print("Fehler: Die Eingabe darf nicht leer sein!")
         pass
 
-    overpass_query = f"[out:json];area[name=\"{answers['city']}\"];(relation[\"type\"=\"boundary\"][\"admin_level\"~\"8|9|10\"](area););out;"
+    overpass_query = (f"[out:json];area[name=\"{answers['city']}\"];"
+                      f"(relation[\"type\"=\"boundary\"][\"admin_level\"~\"8|9|10\"](area););out;")
 
     request = requests.get(OVERPASS_API_URL, params={"data": overpass_query})
 
@@ -56,14 +63,45 @@ def osm_export() -> None:
         streets = set()
 
         print(f"Lade {item['tags']['name']}")
-        overpass_street_query = f"[out:json];area({3600000000 + item['id']});way[highway~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|pedestrian)$\"][name](area);out;"
-        request = requests.get(OVERPASS_API_URL, params={"data": overpass_street_query})
 
-        street_response = request.json()
+        if export_street_options[0] in answers["options"]:
+            # Get all streets in the area
+            overpass_street_query = (f"[out:json];area({3600000000 + item['id']});"
+                                     f"way[highway~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|"
+                                     f"residential|living_street|pedestrian)$\"][name](area);out;")
+            request = requests.get(OVERPASS_API_URL, params={"data": overpass_street_query})
 
-        for way in street_response["elements"]:
-            streets.add(way["tags"]["name"])
+            street_response = request.json()
 
+            for way in street_response["elements"]:
+                streets.add(way["tags"]["name"])
+
+        if export_street_options[1] in answers["options"]:
+            # Get all parks in the area
+            overpass_park_query = (f"[out:json];area({3600000000 + item['id']});"
+                                   f"(way[\"leisure\"=\"park\"](area);relation[\"leisure\"=\"park\"](area););out;")
+            request = requests.get(OVERPASS_API_URL, params={"data": overpass_park_query})
+
+            park_response = request.json()
+            for park in park_response["elements"]:
+                if "name" in park["tags"]:
+                    if "access" in park["tags"] and park["tags"]["access"] == "private":
+                        continue
+                    else:
+                        streets.add(park["tags"]["name"])
+
+        if export_street_options[1] in answers["options"]:
+            # Get all squares in the area
+            overpass_square_query = (f"[out:json];area({3600000000 + item['id']});"
+                                     f"(way[\"place\"=\"square\"](area);relation[\"place\"=\"square\"](area););out;")
+            request = requests.get(OVERPASS_API_URL, params={"data": overpass_square_query})
+
+            square_response = request.json()
+            for square in square_response["elements"]:
+                if "name" in square["tags"]:
+                    streets.add(square["tags"]["name"])
+
+        # Add the result into a dict
         for unique_way in streets:
             address = {"name": unique_way, "area": item["tags"]["name"], "id": counter}
             counter += 1
