@@ -23,12 +23,14 @@ def main() -> None:
 def osm_export() -> None:
 
     export_street_options = ["Straßen", "Parks", "Plätze"]
+    yes_no_options = ["Ja", "Nein"]
 
     export_questions = [
         inquirer.Text("city", message="Welche Stadt soll exportiert werden?"),
         inquirer.Checkbox("options",
                           message="Was soll alles als Straße exportiert werden?",
                           choices=export_street_options),
+        inquirer.List("buildings", message="Sollen auch Gebäude exportiert werden?", choices=yes_no_options)
     ]
 
     answers = inquirer.prompt(export_questions)
@@ -106,6 +108,30 @@ def osm_export() -> None:
             address = {"name": unique_way, "area": item["tags"]["name"], "id": counter}
             counter += 1
             city_section["addresses"].append(address)
+
+        if answers["buildings"] == yes_no_options[0]:
+            # Export buildings
+            overpass_building_query = (f"[out:json];area({3600000000 + item['id']});"
+                                       f"(way[\"building\"][\"name\"][\"addr:street\"](area);"
+                                       f"relation[\"building\"][\"name\"][\"addr:street\"](area););out;")
+
+            request = requests.get(OVERPASS_API_URL, params={"data": overpass_building_query})
+            buildings_response = request.json()
+
+            for building in buildings_response["elements"]:
+                street = next((a for a in city_section["addresses"]
+                               if a["name"] == building["tags"]["addr:street"] and a["area"] == item["tags"]["name"]),
+                              None)
+
+                if street is not None:
+                    if "addr:housenumber" in building["tags"]:
+                        mcp_object = {"name": building["tags"]["name"], "address": street["id"],
+                                      "houseNumber": building["tags"]["addr:housenumber"], "description": ""}
+                    else:
+                        mcp_object = {"name": building["tags"]["name"], "address": street["id"], "houseNumber": "",
+                                      "description": ""}
+
+                    city_section["objects"].append(mcp_object)
 
     sections.append(city_section)
 
