@@ -92,7 +92,7 @@ def osm_export() -> None:
                     else:
                         streets.add(park["tags"]["name"])
 
-        if export_street_options[1] in answers["options"]:
+        if export_street_options[2] in answers["options"]:
             # Get all squares in the area
             overpass_square_query = (f"[out:json];area({3600000000 + item['id']});"
                                      f"(way[\"place\"=\"square\"](area);relation[\"place\"=\"square\"](area););out;")
