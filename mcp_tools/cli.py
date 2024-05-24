@@ -7,7 +7,6 @@ OVERPASS_API_URL = "https://overpass-api.de/api/interpreter"
 
 
 def main() -> None:
-
     task_choices = ["OpenStreetMaps-Export", "Anwendung beenden"]
 
     questions = [inquirer.List("task",
@@ -21,7 +20,6 @@ def main() -> None:
 
 
 def osm_export() -> None:
-
     export_street_options = ["Straßen", "Parks", "Plätze"]
     yes_no_options = ["Ja", "Nein"]
 
@@ -52,23 +50,48 @@ def osm_export() -> None:
 
     response = request.json()
 
+    boundaries = response["elements"]
+
+    if len(boundaries) == 0:
+        # Do another check if the boundary is a root boundary
+        overpass_backup_query = f"[out:json];area[name=\"{answers['city']}\"];out;"
+
+        request = requests.get(OVERPASS_API_URL, params={"data": overpass_backup_query})
+
+        try:
+            request.raise_for_status()
+        except requests.exceptions.HTTPError:
+            print("Fehler: Fehlerhafter Status-Code der HTTP-Anfrage!")
+            pass
+
+        response = request.json()
+
+        boundaries = []
+
+        for element in response["elements"]:
+            if element["type"] == "area":
+                if element["tags"]["type"] == "boundary" and element["tags"]["admin_level"] in ("8", "9", "10"):
+                    boundaries.append(element)
+
+        if len(boundaries) == 0:
+            print("Fehler: Es konnten keine passenden Daten gefunden werden!")
+            pass
+
     sections = []
     city_section = {"name": answers["city"], "addresses": [], "objects": []}
 
     counter = 1
 
-    if len(response["elements"]) == 0:
-        print("Fehler: Es konnten keine passenden Daten gefunden werden!")
-        pass
-
-    for item in response["elements"]:
+    for item in boundaries:
         streets = set()
 
         print(f"Lade {item['tags']['name']}")
 
+        area_id = item['id'] if 3700000000 > item['id'] > 3600000000 else 3600000000 + item['id']
+
         if export_street_options[0] in answers["options"]:
             # Get all streets in the area
-            overpass_street_query = (f"[out:json];area({3600000000 + item['id']});"
+            overpass_street_query = (f"[out:json];area({area_id});"
                                      f"way[highway~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|"
                                      f"residential|living_street|pedestrian)$\"][name](area);out;")
             request = requests.get(OVERPASS_API_URL, params={"data": overpass_street_query})
@@ -80,7 +103,7 @@ def osm_export() -> None:
 
         if export_street_options[1] in answers["options"]:
             # Get all parks in the area
-            overpass_park_query = (f"[out:json];area({3600000000 + item['id']});"
+            overpass_park_query = (f"[out:json];area({area_id});"
                                    f"(way[\"leisure\"=\"park\"](area);relation[\"leisure\"=\"park\"](area););out;")
             request = requests.get(OVERPASS_API_URL, params={"data": overpass_park_query})
 
@@ -94,7 +117,7 @@ def osm_export() -> None:
 
         if export_street_options[2] in answers["options"]:
             # Get all squares in the area
-            overpass_square_query = (f"[out:json];area({3600000000 + item['id']});"
+            overpass_square_query = (f"[out:json];area({area_id});"
                                      f"(way[\"place\"=\"square\"](area);relation[\"place\"=\"square\"](area););out;")
             request = requests.get(OVERPASS_API_URL, params={"data": overpass_square_query})
 
@@ -111,7 +134,7 @@ def osm_export() -> None:
 
         if answers["buildings"] == yes_no_options[0]:
             # Export buildings
-            overpass_building_query = (f"[out:json];area({3600000000 + item['id']});"
+            overpass_building_query = (f"[out:json];area({area_id});"
                                        f"(way[\"building\"][\"name\"][\"addr:street\"](area);"
                                        f"relation[\"building\"][\"name\"][\"addr:street\"](area););out;")
 
