@@ -24,7 +24,7 @@ class ExportAction(Action):
         return request.json()
 
     def run(self) -> None:
-        export_street_options = ["Straßen", "Parks", "Plätze"]
+        export_street_options = ["Straßen", "Parks", "Plätze", "Stadien"]
         yes_no_options = ["Ja", "Nein"]
 
         export_questions = [
@@ -128,6 +128,21 @@ class ExportAction(Action):
                 for square in square_response["elements"]:
                     if "name" in square["tags"]:
                         streets.add(square["tags"]["name"])
+
+            if export_street_options[3] in answers["options"]:
+                # Get all stadiums in the area
+                overpass_stadiums_query = f"[out:json];area({area_id});"\
+                                          f"(way[\"leisure\"=\"stadium\"][!\"building\"](area);"\
+                                          f"relation[\"leisure\"=\"stadium\"][!\"building\"](area););out;"
+
+                stadium_response = self.get_data(overpass_stadiums_query)
+                if stadium_response is None:
+                    print("Fehler: Fehlerhafter Status-Code der HTTP-Anfrage!")
+                    pass
+
+                for stadium in stadium_response["elements"]:
+                    if "name" in stadium["tags"]:
+                        streets.add(stadium["tags"]["name"])
 
             # Add the result into a dict
             for unique_way in streets:
