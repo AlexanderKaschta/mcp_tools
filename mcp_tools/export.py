@@ -65,7 +65,7 @@ class ExportAction(Action):
         location_selection = []
 
         for item in location_response["elements"]:
-            location_selection.append(f"{item["tags"]["name"]} (Admin-Level: {item["tags"]["admin_level"]})")
+            location_selection.append(f"{item['tags']['name']} (Admin-Level: {item['tags']['admin_level']})")
 
         location_question = [
             inquirer.List("city", message="Welche Stadt soll exportiert werden?", choices=location_selection)
