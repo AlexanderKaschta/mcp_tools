@@ -93,7 +93,7 @@ class ExportAction(Action):
         # If the current admin boundary is of level < 8 and has entries of level 8, use all the level 8 entries.
         # If the current admin boundary if of level < 8 and has no entries of level 8, keep using the original boundary.
         boundary_selection_query = (
-            f"[out:json];area({get_area_id(location_response["elements"][location_index]["id"])});"
+            f"[out:json];area({get_area_id(location_response['elements'][location_index]['id'])});"
             f"(relation['type'='boundary']['admin_level'~'8'](area););out;")
 
         boundary_selection_response = get_data(boundary_selection_query)
