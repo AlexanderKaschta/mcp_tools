@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcp_tools"
-version = "1.4.1"
+version = "1.5.0"
 description = "A tool collection for MCP"
 authors = [
     { name = "Alexander Kaschta" },
