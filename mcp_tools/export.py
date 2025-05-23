@@ -223,22 +223,25 @@ class ExportAction(Action):
 
                 print(f"Lade Daten für {item['tags']['name']}")
 
+                # Get the local area id for the current item
+                local_area_id = get_area_id(item["id"])
+
                 # Create set for the streets
                 streets = set()
 
                 city_section = {"name": city_response['elements'][0]['tags']['name'], "addresses": [], "objects": []}
 
                 if export_streets:
-                    for element in self.get_streets(area_id):
+                    for element in self.get_streets(local_area_id):
                         streets.add(element)
                 if export_squares:
-                    for element in self.get_squares(area_id):
+                    for element in self.get_squares(local_area_id):
                         streets.add(element)
                 if export_parks:
-                    for element in self.get_parks(area_id):
+                    for element in self.get_parks(local_area_id):
                         streets.add(element)
                 if export_stadiums:
-                    for element in self.get_stadiums(area_id):
+                    for element in self.get_stadiums(local_area_id):
                         streets.add(element)
 
                 # Add the result into a dict
@@ -249,7 +252,7 @@ class ExportAction(Action):
 
                 if export_buildings:
                     # Export buildings
-                    overpass_building_query = (f"[out:json];area({area_id});"
+                    overpass_building_query = (f"[out:json];area({local_area_id});"
                                                f"(way['building']['name']['addr:street'](area);"
                                                f"relation['building']['name']['addr:street'](area););out;")
 
